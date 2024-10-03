@@ -1,10 +1,11 @@
-from rest_framework.routers import DefaultRouter
-from learning.apps import LearningConfig
-from learning.views import CourseViewSet
+from django.urls import path
+from users.apps import UsersConfig
+from users.views import PaymentsListView
 
-app_name = LearningConfig.name
+app_name = UsersConfig.name
 
 
 urlpatterns = [
+    path('payments/', PaymentsListView.as_view(), name='payments'),
 
 ]
