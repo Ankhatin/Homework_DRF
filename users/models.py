@@ -1,7 +1,8 @@
 from django.contrib.auth.models import AbstractUser
 from django.db import models
+from django.utils import timezone
 
-from config.settings import MEDIA_ROOT
+from learning.models import Course, Lesson
 
 NULLABLE = {'blank': True, 'null': True}
 
@@ -17,4 +18,27 @@ class User(AbstractUser):
     REQUIRED_FIELDS = []
 
     class Meta:
+        verbose_name = 'Пользователь'
+        verbose_name_plural = 'Пользователи'
         ordering = ['id']
+
+
+class Payments(models.Model):
+    METHODS = (
+        ('cash', 'наличные'),
+        ('bank transfer', 'перевод на счет')
+        ,)
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='payments', verbose_name='Пользователь', **NULLABLE)
+    date_of_payment = models.DateField(default=timezone.now, verbose_name='Дата оплаты')
+    course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='payments', verbose_name='Курс', **NULLABLE)
+    lesson = models.ForeignKey(Lesson, on_delete=models.CASCADE, related_name='payments', verbose_name='Урок', **NULLABLE)
+    payment_amount = models.PositiveIntegerField(verbose_name='Сумма платежа')
+    payment_method = models.CharField(max_length=20, choices=METHODS, verbose_name='Способ оплаты')
+
+    def __str__(self):
+        return f'{self.course if self.course else self.lesson} - {self.payment_amount}'
+
+    class Meta:
+        verbose_name = 'Платеж'
+        verbose_name_plural = 'Платежи'
+        ordering = ['date_of_payment']
