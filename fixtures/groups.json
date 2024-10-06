@@ -1,0 +1,10 @@
+[
+{
+  "model": "auth.group",
+  "id": 1,
+  "fields": {
+    "name": "moders",
+    "permissions": []
+  }
+}
+]
