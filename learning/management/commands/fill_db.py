@@ -10,7 +10,7 @@ class Command(BaseCommand):
 
     @staticmethod
     def json_read_data():
-        with open('payments.json', 'r', encoding='utf-8') as file:
+        with open('fixtures/payments.json', 'r', encoding='utf-8') as file:
             data = json.load(file)
             payments = [item['fields'] for item in data if item['model'] == 'users.payments']
             return payments
