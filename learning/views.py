@@ -2,6 +2,7 @@ from django.shortcuts import render
 from django.shortcuts import get_object_or_404
 
 from learning.models import Course, Lesson
+from learning.paginators import LearningPaginator
 from learning.serializers import CourseSerializer, LessonSerializer
 from rest_framework import viewsets, generics
 from rest_framework.response import Response
@@ -12,6 +13,7 @@ from users.permissions import IsModeratorClass, IsOwnerClass
 class CourseViewSet(viewsets.ModelViewSet):
     serializer_class = CourseSerializer
     queryset = Course.objects.all()
+    pagination_class = LearningPaginator
 
     def list(self, request, *args, **kwargs):
         '''
@@ -21,12 +23,14 @@ class CourseViewSet(viewsets.ModelViewSet):
         '''
         if request.user.groups.filter(name="moders").exists():
             queryset = self.get_queryset()
-            serializer = CourseSerializer(queryset, many=True)
-            return Response(serializer.data)
+            paginated_queryset = self.paginate_queryset(queryset)
+            serializer = CourseSerializer(paginated_queryset, many=True)
+            return self.get_paginated_response(serializer.data)
         else:
-            queryset = Course.objects.filter(owner=request.user)
-            serializer = CourseSerializer(queryset, many=True)
-            return Response(serializer.data)
+            queryset = self.get_queryset()
+            paginated_queryset = self.paginate_queryset(queryset)
+            serializer = CourseSerializer(paginated_queryset, many=True, context=request.user)
+            return self.get_paginated_response(serializer.data)
 
     def get_permissions(self):
         if self.action == "create":
@@ -56,6 +60,7 @@ class LessonCreateView(generics.CreateAPIView):
 class LessonListView(generics.ListAPIView):
     serializer_class = LessonSerializer
     permission_classes = [IsModeratorClass | IsOwnerClass]
+    pagination_class = LearningPaginator
 
     def get_queryset(self):
         user = self.request.user
@@ -79,4 +84,5 @@ class LessonUpdateView(generics.UpdateAPIView):
 
 class LessonDestroyView(generics.DestroyAPIView):
     serializer_class = LessonSerializer
+    queryset = Lesson.objects.all()
     permission_classes = [~IsModeratorClass | IsOwnerClass]

@@ -6,7 +6,7 @@ from rest_framework.permissions import AllowAny
 from django.urls import path
 from users.apps import UsersConfig
 from users.views import PaymentsListView, UserListView, UserCreateView, UserRetrieveView, UserUpdateView, \
-    UserDestroyView, SimpleTokenObtainPairView
+    UserDestroyView, SimpleTokenObtainPairView, SubscribeView
 
 app_name = UsersConfig.name
 
@@ -19,5 +19,6 @@ urlpatterns = [
     path('update/<int:pk>/', UserUpdateView.as_view(), name='user_update'),
     path('delete/<int:pk>/', UserDestroyView.as_view(), name='user_delete'),
     path('payments/', PaymentsListView.as_view(), name='payments'),
+    path(r'<user_id>/subscribes/', SubscribeView.as_view(), name='subscribes'),
 
 ]
