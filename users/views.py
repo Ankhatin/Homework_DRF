@@ -11,6 +11,7 @@ from users.models import Payments, User, Subscribe
 from users.permissions import IsModeratorClass, IsOwnerClass, IsOwnerProfile
 from users.serializers import PaymentsSerializer, UserSerializer, SimpleTokenObtainPairSerializer, \
     UserOnlyReadSerializer, SubscribeSerializer
+from users.services import create_product, create_price, create_session, check_payment_status
 
 
 class UserListView(generics.ListAPIView):
@@ -55,10 +56,30 @@ class UserDestroyView(generics.DestroyAPIView):
 
 class PaymentsListView(generics.ListAPIView):
     serializer_class = PaymentsSerializer
-    queryset = Payments.objects.all()
     filter_backends = [OrderingFilter, DjangoFilterBackend]
     filterset_fields = ['course', 'lesson', 'payment_method']
     ordering_fields = ['date_of_payment']
+
+    def get_queryset(self):
+        '''
+        Метод возвращает список платежей для отображения
+        В начале получаем список подписок.
+        Если на какую-либо подписку в базе данных отсутствует запись о платеже
+        проверяем статус оплаты на сервисе Stripe и в случае оплаты
+        создаем запись о платеже
+        '''
+        subscribes = Subscribe.objects.all()
+        for subscribe in subscribes:
+            if subscribe.payment_id:
+                payment_data = check_payment_status(subscribe.payment_id)
+                if payment_data['payment_status'] == 'paid': # проверяем статус платежа
+                    # если платежа в базе данных нет, создаем его
+                    if not Payments.objects.all().filter(user=subscribe.user, course=subscribe.course):
+                        Payments.objects.create(user=subscribe.user,
+                                                course=subscribe.course,
+                                                payment_amount=payment_data['amount_total'] / 100,
+                                                payment_method='bank transfer')
+        return Payments.objects.all()
 
 
 class SimpleTokenObtainPairView(TokenObtainPairView):
@@ -82,7 +103,12 @@ class SubscribeView(generics.GenericAPIView):
             subs_item.delete()
             message = "подписка удалена"
         else:
+            prod_id = create_product(course_item.name)
+            price_id = create_price(course_item.price, prod_id)
+            payment_url, payment_id = create_session(price_id)
+            print(payment_url)
             Subscribe.objects.create(user=user,
-                                     course=course_item)
+                                     course=course_item,
+                                     payment_id=payment_id)
             message = "подписка добавлена"
         return Response({"message": message})

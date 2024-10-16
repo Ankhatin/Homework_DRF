@@ -10,16 +10,16 @@ class IsModeratorClass(BasePermission):
 
 class IsOwnerClass(BasePermission):
 
-    def has_permission(self, request, view):
-        '''
-        Метод проверяет является ли пользователь владельцем хотя бы одного курса или урока
-        для отображения списка курсов и уроков
-        Если явялется: return True
-        '''
-        return Course.objects.filter(owner=request.user) or Lesson.objects.filter(owner=request.user)
-
     def has_object_permission(self, request, view, obj):
         return obj.owner == request.user
+
+    # def has_permission(self, request, view):
+    #     '''
+    #     Метод проверяет является ли пользователь владельцем хотя бы одного курса или урока
+    #     для отображения списка курсов и уроков
+    #     Если явялется: return True
+    #     '''
+    #     return Course.objects.filter(owner=request.user) or Lesson.objects.filter(owner=request.user)
 
 
 class IsOwnerProfile(BasePermission):

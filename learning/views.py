@@ -6,6 +6,7 @@ from learning.paginators import LearningPaginator
 from learning.serializers import CourseSerializer, LessonSerializer
 from rest_framework import viewsets, generics
 from rest_framework.response import Response
+from rest_framework.permissions import IsAuthenticated
 
 from users.permissions import IsModeratorClass, IsOwnerClass
 
@@ -18,27 +19,49 @@ class CourseViewSet(viewsets.ModelViewSet):
     def list(self, request, *args, **kwargs):
         '''
         Метод выводит список курсов и уроков
-        Для авторизованного пользователя выводит объекты, владельцем которых является
-        Для модераторов выводит весь список
+        Для авторизованного пользователя выводит все курсы и уроки
+        Если пользователь не модератор, передает в сериализатор экземпляр пользователя
+        для вывода признака подписки на текущий курс
         '''
-        if request.user.groups.filter(name="moders").exists():
-            queryset = self.get_queryset()
-            paginated_queryset = self.paginate_queryset(queryset)
-            serializer = CourseSerializer(paginated_queryset, many=True)
-            return self.get_paginated_response(serializer.data)
+        queryset = self.get_queryset()
+        paginated_queryset = self.paginate_queryset(queryset)
+        serializer = CourseSerializer(paginated_queryset, many=True)
+        if not request.user.groups.filter(name="moders").exists():
+            # если текущий ползователь не является модератором передаем в сериализатор текущего пользователя
+            CourseSerializer.current_user = request.user
         else:
-            queryset = self.get_queryset()
-            paginated_queryset = self.paginate_queryset(queryset)
-            serializer = CourseSerializer(paginated_queryset, many=True, context=request.user)
-            return self.get_paginated_response(serializer.data)
+            CourseSerializer.current_user = None
+        return self.get_paginated_response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        '''
+        Метод выводит информацию по запрашиваемому курсу
+        Если пользователь не модератор, передает в сериализатор экземпляр пользователя
+        для вывода признака подписки на текущий курс
+        '''
+        queryset = self.get_queryset()
+        obj = get_object_or_404(queryset, **kwargs)
+        self.check_object_permissions(request, obj)
+        serializer = CourseSerializer(obj)
+        if not request.user.groups.filter(name="moders").exists():
+            # если текущий ползователь не является модератором передаем в сериализатор текущего пользователя
+            CourseSerializer.current_user = request.user
+        else:
+            CourseSerializer.current_user = None
+        return Response(serializer.data)
 
     def get_permissions(self):
+        '''
+        Метод описывает права доступа на основе текущего действия пользователя
+        '''
         if self.action == "create":
             self.permission_classes = [~IsModeratorClass]
         elif self.action == "destroy":
-            self.permission_classes = [~IsModeratorClass, IsOwnerClass]
-        else:
-            self.permission_classes = [IsModeratorClass | IsOwnerClass]
+            self.permission_classes = [IsOwnerClass]
+        elif self.action == 'list':
+            self.permission_classes = [IsModeratorClass | IsAuthenticated]
+        elif self.action in ['retrieve', 'update']:
+            self.permission_classes = [IsOwnerClass | IsModeratorClass]
         return super().get_permissions()
 
     def perform_create(self, serializer):
