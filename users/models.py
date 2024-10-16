@@ -47,6 +47,7 @@ class Payments(models.Model):
 class Subscribe(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='subscribes', verbose_name='Пользователь')
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='subscribes', verbose_name='Курс')
+    payment_id = models.CharField(max_length=300, verbose_name="ID платежа", **NULLABLE)
 
     def __str__(self):
         return f'{self.user} - {self.course}'
