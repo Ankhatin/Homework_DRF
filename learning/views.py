@@ -1,4 +1,6 @@
-from django.shortcuts import render
+from datetime import datetime, timedelta
+
+from django.utils import timezone
 from django.shortcuts import get_object_or_404
 
 from learning.models import Course, Lesson
@@ -10,11 +12,14 @@ from rest_framework.permissions import IsAuthenticated
 
 from users.permissions import IsModeratorClass, IsOwnerClass
 
+from learning.tasks import send_email
+
 
 class CourseViewSet(viewsets.ModelViewSet):
     serializer_class = CourseSerializer
     queryset = Course.objects.all()
     pagination_class = LearningPaginator
+    dict_last_updates = {}
 
     def list(self, request, *args, **kwargs):
         '''
@@ -50,6 +55,20 @@ class CourseViewSet(viewsets.ModelViewSet):
             CourseSerializer.current_user = None
         return Response(serializer.data)
 
+    def perform_create(self, serializer):
+        course = serializer.save()
+        course.owner = self.request.user
+        course.save()
+
+    def perform_update(self, serializer, *args, **kwargs):
+        course = serializer.save()
+        if CourseViewSet.dict_last_updates.get(course):
+            last_update = CourseViewSet.dict_last_updates.get(course)
+            if datetime.now() - last_update >= timedelta(hours=4):
+                send_email.delay(course.pk)
+        CourseViewSet.dict_last_updates.update({course: datetime.now()})
+        print(CourseViewSet.dict_last_updates[course])
+
     def get_permissions(self):
         '''
         Метод описывает права доступа на основе текущего действия пользователя
@@ -63,11 +82,6 @@ class CourseViewSet(viewsets.ModelViewSet):
         elif self.action in ['retrieve', 'update']:
             self.permission_classes = [IsOwnerClass | IsModeratorClass]
         return super().get_permissions()
-
-    def perform_create(self, serializer):
-        course = serializer.save()
-        course.owner = self.request.user
-        course.save()
 
 
 class LessonCreateView(generics.CreateAPIView):

@@ -26,7 +26,7 @@ class UserOnlyReadSerializer(serializers.ModelSerializer):
     '''
     class Meta:
         model = User
-        fields = ["email", "phone", "city"]
+        fields = ["email", "phone", "city", "last_login"]
 
 
 class SimpleTokenObtainPairSerializer(TokenObtainPairSerializer):
