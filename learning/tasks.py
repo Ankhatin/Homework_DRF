@@ -46,6 +46,6 @@ def check_user_on_active():
         if user.last_login:
             print(f'current {timezone.now()}')
             print(f'now {user.last_login}')
-            if (timezone.now() - user.last_login) >= timedelta(minutes=10):
+            if (timezone.now() - user.last_login) >= timedelta(hours=12):
                 user.is_active = True
                 user.save()
